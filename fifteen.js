@@ -21,7 +21,7 @@ window.onload = function ()
 		{
 			if (move(parseInt(this.innerHTML)))
 			{
-				this.style.border = "2px solid green";
+				this.style.border = "2px solid #7CFC00";
 				this.style.color = "#006600";
 			}
 		};
