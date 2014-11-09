@@ -1,251 +1,149 @@
-"use strict";
-var div;
-var blink;
-var timer;
-var whiteSpaceY;
-var whiteSpaceX;
+window.onload = function  () {
+	"use strict";
 
-window.onload = function ()
-{
-	var puzzlearea = document.getElementById('puzzlearea');
-	
-	div = puzzlearea.getElementsByTagName('div');
+	var $puzzle = $('puzzlearea'),
+	$shuffle = $('shufflebutton'),
+	$squares = $$('#puzzlearea div'),
+	game = {
+		blank : [], 
+		complete: false,
+		inProgress : false,
+		init : function(){
 
-	for (var i=0; i<div.length; i++)
-	{
-		div[i].className = 'puzzlepiece';
-		div[i].style.left = (i%4*100)+'px';
-		div[i].style.top = (parseInt(i/4)*100) + 'px';
-		div[i].style.backgroundPosition= '-' + div[i].style.left + ' ' + '-' + div[i].style.top;
-		div[i].onmouseover = function()
-		{
-			if (move(parseInt(this.innerHTML)))
-			{
-				this.style.border = "2px solid red";
-				this.style.color = "#006600";
+			var	top = 0;
+
+			for(var i = 0; i<$squares.length; i++){
+				var left = (i % 4) * 100,
+				xOffset = 400 - left,
+				yOffset = 400 - top,
+				position = [left, top];
+				$squares[i].addClassName('puzzlepiece');
+				this.setPiece($squares[i], position);
+				$squares[i].setStyle({
+					backgroundPosition: xOffset + 'px ' + yOffset + 'px'
+				}); 
+				$squares[i].writeAttribute('data-correct', [left, top]);
+				
+				top += ((i + 1) % 4 == 0) ? 100 : 0;
 			}
-		};
-		div[i].onmouseout = function()
-		{
-			this.style.border = "2px solid black";
-			this.style.color = "#000000";
-		};
-
-		div[i].onclick = function()
-		{
-			if (move(parseInt(this.innerHTML)))
-			{
-				swap(this.innerHTML-1);
-				if (checkFinish())
-				{
-					win();
+			this.blank = [300, 300];
+			this.square_style();
+		},
+		checkSolved : function(){
+			if (!this.complete && this.inProgress){
+				var solved = true;
+				for (var i = 0; i < $squares.length; i++) {
+					var positionData = this.getPositionDataFromPiece($squares[i]);
+					solved = solved && positionData.current.toString() === positionData.correct.toString();
 				}
-				return;
-			}
-		};
-	}
 
-	whiteSpaceX = '300px';
-	whiteSpaceY = '300px';
-
-	var shufflebutton = document.getElementById('shufflebutton');
-	shufflebutton.onclick = function()
-	{
-
-		for (var i=0; i<250; i++)
-		{
-			var rand = parseInt(Math.random()* 100) %4;
-			if (rand == 0)
-			{
-				var tmp = calcUp(whiteSpaceX, whiteSpaceY);
-				if ( tmp != -1)
-				{
-					swap(tmp);
+				if (solved){
+					$puzzle.fire('puzzle:solved');
 				}
 			}
-			if (rand == 1)
-			{
-				var tmp = calcDown(whiteSpaceX, whiteSpaceY);
-				if ( tmp != -1) 
-				{
-					swap(tmp);
+		},
+		setPiece : function(piece, position){
+			piece.writeAttribute('data-position', position);
+			piece.setStyle({
+				left: position[0] + 'px',
+				top: position[1] + 'px'
+			});
+		},
+		getPositionDataFromPiece : function(piece){
+			var currentPositionAsString = piece.readAttribute('data-position').split(','),
+			correctPositionAsString = piece.readAttribute('data-correct').split(',');
+
+			return {
+				current: [parseInt(currentPositionAsString[0]), parseInt(currentPositionAsString[1])],
+				correct: [parseInt(correctPositionAsString[0]), parseInt(correctPositionAsString[1])]
+			}; 
+		},
+		shuffle_squares : function(){
+			if (!this.complete){
+				for (var i = 0; i < 250; i++) {
+					var movablesquares = this.getMovablesquares(),
+					indexToMove = Math.floor(Math.random() * movablesquares.length),
+					piece = movablesquares[indexToMove];
+					this.move(piece);	
 				}
+				this.inProgress = true;
+
+			}
+		},
+		square_style : function(){
+			$squares.each(function(piece){
+				if (piece.hasClassName('movablepiece')){
+					piece.removeClassName('movablepiece');
+				}
+			});
+			var movablesquares = this.getMovablesquares();
+			movablesquares.each(function(piece){
+				piece.addClassName('movablepiece');
+			});			
+		},
+		getMovablesquares : function(){
+			var positions = [],
+			movablesquares = [];
+
+			if (this.isValidPosition([this.blank[0] + 100, this.blank[1]])) { positions.push([this.blank[0] + 100, this.blank[1]]); }
+			if (this.isValidPosition([this.blank[0] - 100, this.blank[1]])) { positions.push([this.blank[0] - 100, this.blank[1]]); }
+			if (this.isValidPosition([this.blank[0], this.blank[1] + 100])) { positions.push([this.blank[0], this.blank[1] + 100]); }
+			if (this.isValidPosition([this.blank[0], this.blank[1] - 100])) { positions.push([this.blank[0], this.blank[1] - 100]); }
+
+			for (var i = 0; i < positions.length; i++) {
+				movablesquares.push(this.findPieceByPosition(positions[i]));
 			}
 
-			if (rand == 2)
-			{
-				var tmp = calcLeft(whiteSpaceX, whiteSpaceY);
-				if ( tmp != -1)
-				{
-					swap(tmp);
-				}
+			return movablesquares;
+		},
+		isValidPosition : function(position){
+			return position[0] <= 300 && position[0] >= 0 && position[1] <= 300 && position[1] >= 0;
+		},
+		findPieceByPosition : function(position){
+			if (this.isValidPosition(position)){
+				return $$('div[data-position=' + position + ']' )[0];
 			}
+		},
+		isMovablePiece : function (piece){
+			var movablesquares = this.getMovablesquares(),
+			movable = false;
 
-			if (rand == 3)
-			{
-				var tmp = calcRight(whiteSpaceX, whiteSpaceY);
-				if (tmp != -1)
-				{
-					swap(tmp);
-				}
+			for (var i = 0; i < movablesquares.length; i++) {
+				movable = movable || piece === movablesquares[i];
+			}
+			
+			return movable;
+		},
+		move : function(piece){
+			if (this.isMovablePiece(piece)){
+				var position = this.getPositionDataFromPiece(piece).current,
+				newPosition = game.blank;
+				this.blank = position;
+				this.setPiece(piece, newPosition);
+				this.square_style();
+				this.checkSolved();
 			}
 		}
 	};
+
+	$shuffle.observe('click', shuffle_squares);
+
+	function shuffle_squares(){
+		game.shuffle_squares();
+	}
+
+	$squares.each(function(item){
+		item.observe('click', move);
+	});
+
+	function move(){
+		game.move(this);
+	}
+
+	$puzzle.observe('puzzle:solved', function(event){
+		$puzzle.innerHTML = "<h2>Congrats, you won!</h2>";
+		game.complete = true;
+	});
+
+	game.init();
 };
-
-function move(pos)
-{
-	if (calcLeft(whiteSpaceX, whiteSpaceY) == (pos-1))
-	{
-		return true;
-	}
-
-	if (calcDown(whiteSpaceX, whiteSpaceY) == (pos-1))
-	{
-		return true;
-	}
-
-	if (calcUp(whiteSpaceX, whiteSpaceY) == (pos-1))
-	{
-		return true;
-	}
-
-	if (calcRight(whiteSpaceX, whiteSpaceY) == (pos-1))
-	{
-		return true;
-	}
-}
-function Blink()
-{
-	blink --;
-	if (blink == 0)
-	{
-		var body = document.getElementsByTagName('body');
-		body[0].style.backgroundColor = "#FFFFFF";
-		alert('you win');
-		return;
-	}
-	if (blink % 2)
-	{
-		var body = document.getElementsByTagName('body');
-		body[0].style.backgroundColor = "#00FF00";	
-	}
-	else
-	{
-		var body = document.getElementsByTagName('body');
-		body[0].style.backgroundColor = "#FF0000";
-	}
-	timer = setTimeout(Blink, 100);
-}
-
-function win()
-{
-	var body = document.getElementsByTagName('body');
-	body[0].style.backgroundColor = "#FF0000";
-	blink = 10;
-	timer = setTimeout(Blink, 100);
-}
-
-function checkFinish()
-{
-	var flag = true;
-	for (var i = 0; i < div.length; i++) {
-		var y = parseInt(div[i].style.top);
-		var x = parseInt(div[i].style.left);
-
-		if (x != (i%4*100) || y != parseInt(i/4)*100)
-		{
-			flag = false;
-			break;
-		}
-	}
-	return flag;
-}
-
-function calcLeft(x, y)
-{
-	var xx = parseInt(x);
-	var yy = parseInt(y);
-
-	if (xx > 0)
-	{
-		for (var i = 0; i < div.length; i++) 
-		{
-			if (parseInt(div[i].style.left) + 100 == xx && parseInt(div[i].style.top) == yy)
-			{
-				return i;
-			} 
-		}
-	}
-	else 
-	{
-		return -1;
-	}
-}
-
-function calcRight (x, y) {
-	var xx = parseInt(x);
-	var yy = parseInt(y);
-	if (xx < 300)
-	{
-		for (var i =0; i<div.length; i++){
-			if (parseInt(div[i].style.left) - 100 == xx && parseInt(div[i].style.top) == yy) 
-			{
-				return i;
-			}
-		}
-	}
-	else
-	{
-		return -1;
-	} 
-}
-
-function calcUp (x, y) {
-	var xx = parseInt(x);
-	var yy = parseInt(y);
-	if (yy > 0)
-	{
-		for (var i=0; i<div.length; i++)
-		{
-			if (parseInt(div[i].style.top) + 100 == yy && parseInt(div[i].style.left) == xx) 
-			{
-				return i;
-			}
-		} 
-	}
-	else 
-	{
-		return -1;
-	}
-}
-
-function calcDown (x, y)
-{
-	var xx = parseInt(x);
-	var yy = parseInt(y);
-	if (yy < 300)
-	{
-		for (var i=0; i<div.length; i++)
-		{
-			if (parseInt(div[i].style.top) - 100 == yy && parseInt(div[i].style.left) == xx) 
-			{
-				return i;
-			}
-		}
-	}
-	else
-	{
-		return -1;
-	} 
-}
-
-function swap (pos) {
-	var temp = div[pos].style.top;
-	div[pos].style.top = whiteSpaceY;
-	whiteSpaceY = temp;
-
-	temp = div[pos].style.left;
-	div[pos].style.left = whiteSpaceX;
-	whiteSpaceX = temp;
-}
