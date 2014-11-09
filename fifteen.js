@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 window.onload = function  () {
 	"use strict";
 
@@ -26,33 +25,6 @@ window.onload = function  () {
 				$squares[i].writeAttribute('data-correct', [left, top]);
 				
 				top += ((i + 1) % 4 == 0) ? 100 : 0;
-=======
-"use strict";
-var div;
-var blink;
-var timer;
-var whiteSpaceY;
-var whiteSpaceX;
-
-window.onload = function ()
-{
-	var puzzlearea = document.getElementById('puzzlearea');
-	
-	div = puzzlearea.getElementsByTagName('div');
-
-	for (var i=0; i<div.length; i++)
-	{
-		div[i].className = 'puzzlepiece';
-		div[i].style.left = (i%4*100)+'px';
-		div[i].style.top = (parseInt(i/4)*100) + 'px';
-		div[i].style.backgroundPosition= '-' + div[i].style.left + ' ' + '-' + div[i].style.top;
-		div[i].onmouseover = function()
-		{
-			if (move(parseInt(this.innerHTML)))
-			{
-				this.style.border = "2px solid #7CFC00";
-				this.style.color = "#006600";
->>>>>>> origin/gh-pages
 			}
 			this.blank = [300, 300];
 			this.square_style();
